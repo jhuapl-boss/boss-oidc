@@ -26,7 +26,7 @@ setup(
         'oic>=0.76',
         'django-oidc>=0.1.3',
         'drf-oidc-auth>=0.8'
-    ]
+    ],
     classifiers=[
         'Environment :: Web Environment',
         'Development Status :: 4 - Beta',
