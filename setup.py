@@ -15,7 +15,7 @@ setup(
     name='boss-oidc',
     version='0.1',
     packages=['bossoidc'],
-    url='https://github.com/jhuapl-boss/boss-oidc'
+    url='https://github.com/jhuapl-boss/boss-oidc',
     license="Apache Software License",
     author='Derek Pryor',
     author_email='Derek.Pryor@jhuapl.edu',
