@@ -23,7 +23,7 @@ setup(
     install_requires=[
         'django>=1.8',
         'djangorestframework>=2.4.0',
-        'oic>=0.76',
+        'oic>=0.7.6',
         'django-oidc>=0.1.3',
         'drf-oidc-auth>=0.8'
     ],
