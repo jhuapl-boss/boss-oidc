@@ -35,7 +35,7 @@ def get_user_by_id(request, id_token):
     return user
 
 class OpenIdConnectBackend(DOIDCBackend):
-    def clean_username(self, username)
+    def clean_username(self, username):
         return resolve_username(username)
 
     def authenticate(self, **kwargs):
