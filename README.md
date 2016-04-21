@@ -45,7 +45,7 @@ public_uri = "http://localhost:8000" # The address that the client will be redir
                                      # NOTE: the public uri needs to be configured in the Auth Server
                                      #       as a valid uri to redirect to
 
-from bossoidc.setting import *
+from bossoidc.settings import *
 configure_oidc(auth_uri, client_id, public_uri)
 ```
 
