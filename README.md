@@ -17,6 +17,7 @@ Install bossoidc:
 
 ```sh
 pip install git+https://github.com/jhuapl-boss/django-oidc.git
+pip install git+https://github.com/jhuapl-boss/drf-oidc-auth.git
 pip install git+https://github.com/jhuapl-boss/boss-oidc.git
 ```
 
