@@ -16,6 +16,8 @@ import datetime
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.settings import import_from_string
+
 from django.utils.translation import ugettext as _
 from djangooidc.backends import OpenIdConnectBackend as DOIDCBackend
 
@@ -30,7 +32,7 @@ def get_user_by_id(request, id_token):
     drf-oidc-auth to make use of the same create user functionality
     """
     UserModel = get_user_model()
-    username = resolve_username(id_token['sub'])
+    username = resolve_username(id_token['preferred_username'])
 
     # Some OP may actually choose to withhold some information, so we must test if it is present
     openid_data = {'last_login': datetime.datetime.now()}
@@ -60,12 +62,17 @@ def get_user_by_id(request, id_token):
             msg = _('Invalid Authorization header. User not found.')
             raise AuthenticationFailed(msg)
 
+    func_name = getattr(settings, 'CALLBACK', None)
+    func_ref = import_from_string(func_name, 'LOAD_USER_ROLE')
+
+    roles = None
+    func_ref(user, username, roles)
     update_user_data(user, id_token)
 
     return user
 
 class OpenIdConnectBackend(DOIDCBackend):
-    def authenticate(self, **kwargs):
+    def authenticate(self, request=None, **kwargs):
         user = None
         if not kwargs or 'sub' not in kwargs.keys():
             return user

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from django.conf import settings
 # bypass the djangooidc provided page and go directly to the keycloak page
 LOGIN_URL = "/openid/openid/KeyCloak"
 
@@ -37,6 +38,8 @@ OIDC_AUTH = {
     'OIDC_AUDIENCES': [],
     'OIDC_RESOLVE_USER_FUNCTION': 'bossoidc.backend.get_user_by_id',
 }
+
+CALLBACK = getattr(settings, 'LOAD_USER_ROLE', None)
 
 def configure_oidc(auth_uri, client_id, public_uri):
     global OIDC_PROVIDERS
