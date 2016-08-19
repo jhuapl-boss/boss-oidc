@@ -21,6 +21,23 @@ from rest_framework.settings import import_from_string
 from django.utils.translation import ugettext as _
 from djangooidc.backends import OpenIdConnectBackend as DOIDCBackend
 
+from bossutils.logger import BossLogger
+from bossutils.keycloak import KeyCloakClient
+import json
+
+LOG = BossLogger().logger
+
+def load_user_roles(user, roles):
+    pass
+
+LOAD_USER_ROLES = getattr(settings, 'LOAD_USER_ROLES', None)
+if LOAD_USER_ROLES is None:
+    # DP NOTE: had issues with import_from_string loading bossoidc.backend.load_user_roles
+    LOAD_USER_ROLES_FUNCTION = load_user_roles
+else:
+    LOAD_USER_ROLES_FUNCTION = import_from_string(LOAD_USER_ROLES, 'LOAD_USER_ROLES')
+
+
 def resolve_username(username):
     return username[:30] # Django User username is 30 character limited
 
@@ -62,13 +79,19 @@ def get_user_by_id(request, id_token):
             msg = _('Invalid Authorization header. User not found.')
             raise AuthenticationFailed(msg)
 
-    func_name = getattr(settings, 'CALLBACK', None)
-    func_ref = import_from_string(func_name, 'LOAD_USER_ROLE')
+    # PM TODO : Currently getting the roles from the library. Change this to get it from the token instead
+    kc = KeyCloakClient('BOSS')
+    kc.login()
+    resp = kc.get_realm_roles(username)
+    roles = [r['name'] for r in resp]
 
-    roles = None
-    func_ref(user, username, roles)
+    user.is_staff = 'admin' in roles or 'superuser' in roles
+    user.is_superuser = 'superuser' in roles
+
+    LOAD_USER_ROLES_FUNCTION(user, roles)
     update_user_data(user, id_token)
 
+    user.save()
     return user
 
 class OpenIdConnectBackend(DOIDCBackend):

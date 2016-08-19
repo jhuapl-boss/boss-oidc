@@ -39,8 +39,6 @@ OIDC_AUTH = {
     'OIDC_RESOLVE_USER_FUNCTION': 'bossoidc.backend.get_user_by_id',
 }
 
-CALLBACK = getattr(settings, 'LOAD_USER_ROLE', None)
-
 def configure_oidc(auth_uri, client_id, public_uri):
     global OIDC_PROVIDERS
     OIDC_PROVIDERS['KeyCloak']['srv_discovery_url'] = auth_uri
