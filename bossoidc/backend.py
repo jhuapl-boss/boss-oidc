@@ -21,6 +21,8 @@ from rest_framework.settings import import_from_string
 from django.utils.translation import ugettext as _
 from djangooidc.backends import OpenIdConnectBackend as DOIDCBackend
 
+from bossoidc.models import Keycloak as KeycloakModel
+
 from bossutils.logger import BossLogger
 from bossutils.keycloak import KeyCloakClient
 import json
@@ -38,8 +40,9 @@ else:
     LOAD_USER_ROLES_FUNCTION = import_from_string(LOAD_USER_ROLES, 'LOAD_USER_ROLES')
 
 
-def resolve_username(username):
-    return username[:30] # Django User username is 30 character limited
+def check_username(username):
+    if len(username) > 30: # Django User username is 30 character limited
+        raise AuthenticationFailed(_('Username is too long for Django'))
 
 def update_user_data(user, token):
     pass
@@ -49,7 +52,10 @@ def get_user_by_id(request, id_token):
     drf-oidc-auth to make use of the same create user functionality
     """
     UserModel = get_user_model()
-    username = resolve_username(id_token['preferred_username'])
+    uid = id_token['sub']
+    username = id_token['preferred_username']
+
+    check_username(username)
 
     # Some OP may actually choose to withhold some information, so we must test if it is present
     openid_data = {'last_login': datetime.datetime.now()}
@@ -66,18 +72,29 @@ def get_user_by_id(request, id_token):
     if 'email' in id_token.keys():
         openid_data['email'] = id_token['email']
 
-    # Note that this could be accomplished in one try-except clause, but
-    # instead we use get_or_create when creating unknown users since it has
-    # built-in safeguards for multiple threads.
-    if getattr(settings, 'OIDC_CREATE_UNKNOWN_USER', True):
-        args = {UserModel.USERNAME_FIELD: username, 'defaults': openid_data, }
-        user, created = UserModel.objects.update_or_create(**args)
-    else:
+    # DP NOTE: The thing that we are trying to prevent is the user account being
+    #          deleted and recreated in Keycloak (all user data the same, but a
+    #          different uid) and getting the application permissions of the old
+    #          user account.
+
+    try: # try to lookup by keycloak UID first
+        kc_user = KeycloakModel.objects.get(UID = uid)
+        user = kc_user.user
+    except: # user doesn't exist with a keycloak UID
         try:
             user = UserModel.objects.get_by_natural_key(username)
-        except UserModel.DoesNotExist:
-            msg = _('Invalid Authorization header. User not found.')
-            raise AuthenticationFailed(msg)
+
+            # remove existing user account, so permissions are not transfered
+            # DP NOTE: required, as the username field is still a unique field,
+            #          which doesn't allow multiple users in the table with the
+            #          same username
+            user.delete()
+        except:
+            pass
+
+        args = {UserModel.USERNAME_FIELD: username, 'defaults': openid_data, }
+        user = UserModel.objects.create(**args)
+        kc_user = KeycloakModel.objects.create(user = user, UID = uid)
 
     # PM TODO : Currently getting the roles from the library. Change this to get it from the token instead
     kc = KeyCloakClient('BOSS')
