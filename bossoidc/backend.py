@@ -17,17 +17,15 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.settings import import_from_string
+from rest_framework.authentication import get_authorization_header
 
 from django.utils.translation import ugettext as _
 from djangooidc.backends import OpenIdConnectBackend as DOIDCBackend
 
 from bossoidc.models import Keycloak as KeycloakModel
+from jwkest.jwt import JWT
 
-from bossutils.logger import BossLogger
-from bossutils.keycloak import KeyCloakClient
 import json
-
-LOG = BossLogger().logger
 
 def load_user_roles(user, roles):
     pass
@@ -93,14 +91,16 @@ def get_user_by_id(request, id_token):
             pass
 
         args = {UserModel.USERNAME_FIELD: username, 'defaults': openid_data, }
-        user = UserModel.objects.create(**args)
+        user, created = UserModel.objects.update_or_create(**args)
         kc_user = KeycloakModel.objects.create(user = user, UID = uid)
 
-    # PM TODO : Currently getting the roles from the library. Change this to get it from the token instead
-    kc = KeyCloakClient('BOSS')
-    kc.login()
-    resp = kc.get_realm_roles(username)
-    roles = [r['name'] for r in resp]
+    if 'access_token' in request.session: # Session based login
+        token = request.session['access_token']
+    else: # Bearer Token login
+        token = get_authorization_header(request).split()[1]
+
+    jwt = JWT().unpack(token).payload()
+    roles = jwt['realm_access']['roles']
 
     user.is_staff = 'admin' in roles or 'superuser' in roles
     user.is_superuser = 'superuser' in roles
@@ -117,5 +117,5 @@ class OpenIdConnectBackend(DOIDCBackend):
         if not kwargs or 'sub' not in kwargs.keys():
             return user
 
-        user = get_user_by_id(None, kwargs)
+        user = get_user_by_id(request, kwargs)
         return user

@@ -24,6 +24,12 @@ pip install git+https://github.com/jhuapl-boss/boss-oidc.git
 Configure authentication for Django and Django REST Framework in settings.py:
 
 ```py
+INSTALLED_APPS = [
+    # ...
+    'bossoidc',
+    'djangooidc',
+]
+
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'bossoidc.backend.OpenIdConnectBackend',
