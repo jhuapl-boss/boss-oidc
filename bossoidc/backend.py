@@ -101,10 +101,13 @@ def get_user_by_id(request, id_token):
 
     jwt = JWT().unpack(token).payload()
 
-    if 'realm_access' in jwt: # Session logins and Bearer tokens from password Grant Types
-        roles = jwt['realm_access']['roles']
-    else: # Bearer tokens from authorization_code Grant Types
-        roles = jwt['resource_access']['account']['roles']
+    try:
+        if 'realm_access' in jwt: # Session logins and Bearer tokens from password Grant Types
+            roles = jwt['realm_access']['roles']
+        else: # Bearer tokens from authorization_code Grant Types
+            roles = jwt['resource_access']['account']['roles']
+    except KeyError:
+        roles = [] # No roles assigned / contained in the token
 
     user.is_staff = 'admin' in roles or 'superuser' in roles
     user.is_superuser = 'superuser' in roles
