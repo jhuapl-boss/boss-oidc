@@ -37,6 +37,7 @@ OIDC_AUTH = {
     'OIDC_ENDPOINT': None,
     'OIDC_AUDIENCES': [],
     'OIDC_RESOLVE_USER_FUNCTION': 'bossoidc.backend.get_user_by_id',
+    'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 4 * 10, # 4 minutes
 }
 
 def configure_oidc(auth_uri, client_id, public_uri):
