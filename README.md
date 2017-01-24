@@ -47,6 +47,13 @@ REST_FRAMEWORK = {
     ),
 }
 
+# (Optional) A function used to process a user's roles for the application
+#            It also provides a helpful hook for each time a user logs in
+# Function Args:
+#   user (User object): The user that is logging in
+#   roles (list of string): List of the roles the user is currently assigned
+LOAD_USER_ROLES = 'path.to.function'
+
 auth_uri = "https://auth.theboss.io/auth/realms/BOSS"
 client_id = "<auth client id>" # Client ID configured in the Auth Server
 public_uri = "http://localhost:8000" # The address that the client will be redirected back to
