@@ -15,6 +15,7 @@
 from django.conf import settings
 # bypass the djangooidc provided page and go directly to the keycloak page
 LOGIN_URL = "/openid/openid/KeyCloak"
+LOGOUT_URL = "/openid/logout"
 
 # DJANGO-OIDC Configuration - Session based SSO authentication
 OIDC_PROVIDERS = {
