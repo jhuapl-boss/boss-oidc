@@ -54,6 +54,11 @@ REST_FRAMEWORK = {
 #   roles (list of string): List of the roles the user is currently assigned
 LOAD_USER_ROLES = 'path.to.function'
 
+# NOTE: The following two rules are automatically applied to all user account during
+#       the login process to allow bootstrapping admin / superuser accounts.
+# The user will be assigned Django staff permissions if they have a 'admin' or 'superuser' role in Keycloak
+# The user will be assigned Django superuser permissions if they have a 'superuser' role in Keycloak
+
 auth_uri = "https://auth.theboss.io/auth/realms/BOSS"
 client_id = "<auth client id>" # Client ID configured in the Auth Server
 public_uri = "http://localhost:8000" # The address that the client will be redirected back to
@@ -70,6 +75,13 @@ Add the required URLs to the Django project in urls.py:
 url(r'openid/', include('djangooidc.urls')),
 ```
 
+Run the following migration to create the table for storing the Keycloak UID
+
+```sh
+$ python manage.py makemigrations bossoidc
+$ python manage.py migrate
+```
+
 You may now test the authentication by going to (on the development server) http://localhost:8000/openid/login or to any
 of your views that requires authentication.
 
@@ -78,6 +90,6 @@ Features
 --------
 
 * Ready to use Django authentication backend
-* No models stored in database - just some configuration in settings.py to keep it simple
 * Fully integrated with Django's internal accounts and permission system
+* Stores Keycloak UID to improve Keycloak - Django account association
 * Support for OpenID Connect Bearer Token Authentication
