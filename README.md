@@ -59,14 +59,22 @@ LOAD_USER_ROLES = 'path.to.function'
 # The user will be assigned Django staff permissions if they have a 'admin' or 'superuser' role in Keycloak
 # The user will be assigned Django superuser permissions if they have a 'superuser' role in Keycloak
 
+# (Optional) A function used to process additional scope values in the token
+#            It also provides a helpful hook for each time a user logs in
+# Function Args:
+#   user (User object): The user that is logging in
+#   token (dict): The JWT object used to lookup and create or update the user
+UPDATE_USER_DATA = 'path.to.function'
+
 auth_uri = "https://auth.theboss.io/auth/realms/BOSS"
 client_id = "<auth client id>" # Client ID configured in the Auth Server
 public_uri = "http://localhost:8000" # The address that the client will be redirected back to
                                      # NOTE: the public uri needs to be configured in the Auth Server
                                      #       as a valid uri to redirect to
+scope = ['openid', 'profile', 'email'] # NOTE: This is the default scope if one is not provided
 
 from bossoidc.settings import *
-configure_oidc(auth_uri, client_id, public_uri)
+configure_oidc(auth_uri, client_id, public_uri, scope) # NOTE: scope is optional and can be left out
 ```
 
 Add the required URLs to the Django project in urls.py:

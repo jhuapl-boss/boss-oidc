@@ -38,12 +38,19 @@ else:
     LOAD_USER_ROLES_FUNCTION = import_from_string(LOAD_USER_ROLES, 'LOAD_USER_ROLES')
 
 
+def update_user_data(user, token):
+    pass
+
+UPDATE_USER_DATA = getattr(settings, 'UPDATE_USER_DATA', None)
+if UPDATE_USER_DATA is None:
+    UPDATE_USER_DATA_FUNCTION = update_user_data
+else:
+    UPDATE_USER_DATA_FUNCTION = import_from_string(UPDATE_USER_DATA, 'UPDATE_USER_DATA')
+
+
 def check_username(username):
     if len(username) > 30: # Django User username is 30 character limited
         raise AuthenticationFailed(_('Username is too long for Django'))
-
-def update_user_data(user, token):
-    pass
 
 def get_user_by_id(request, id_token):
     """ Taken from djangooidc.backends.OpenIdConnectBackend and made common for
@@ -113,7 +120,7 @@ def get_user_by_id(request, id_token):
     user.is_superuser = 'superuser' in roles
 
     LOAD_USER_ROLES_FUNCTION(user, roles)
-    update_user_data(user, id_token)
+    UPDATE_USER_DATA_FUNCTION(user, id_token)
 
     user.save()
     return user

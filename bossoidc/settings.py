@@ -41,7 +41,7 @@ OIDC_AUTH = {
     'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 4 * 10, # 4 minutes
 }
 
-def configure_oidc(auth_uri, client_id, public_uri):
+def configure_oidc(auth_uri, client_id, public_uri, scope=None):
     global OIDC_PROVIDERS
     OIDC_PROVIDERS['KeyCloak']['srv_discovery_url'] = auth_uri
     OIDC_PROVIDERS['KeyCloak']['client_registration']['client_id'] = client_id
@@ -49,6 +49,12 @@ def configure_oidc(auth_uri, client_id, public_uri):
     logout_uri = public_uri + '/openid/callback/logout/'
     OIDC_PROVIDERS['KeyCloak']['client_registration']['redirect_uris'] = [login_uri]
     OIDC_PROVIDERS['KeyCloak']['client_registration']['post_logout_redirect_uris'] = [logout_uri]
+
+    if scope:
+        # DP NOTE: Scope is only set for django-oidc / session based auth
+        #          as it is up to the caller to request the scope when
+        #          retrieving the JWT Bearer token that is used by drf-oidc-auth
+        OIDC_PROVIDERS['KeyCloak']['behavior']['scope'] = scope
 
     global OIDC_AUTH
     OIDC_AUTH['OIDC_ENDPOINT'] = auth_uri
