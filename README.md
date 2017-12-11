@@ -47,6 +47,13 @@ REST_FRAMEWORK = {
     ),
 }
 
+# (Optional) A function used to process additional scope values in the token
+#            It also provides a helpful hook for each time a user logs in
+# Function Args:
+#   user (User object): The user that is logging in
+#   token (dict): The JWT object used to lookup and create or update the user
+UPDATE_USER_DATA = 'path.to.function'
+
 # (Optional) A function used to process a user's roles for the application
 #            It also provides a helpful hook for each time a user logs in
 # Function Args:
@@ -58,13 +65,6 @@ LOAD_USER_ROLES = 'path.to.function'
 #       the login process to allow bootstrapping admin / superuser accounts.
 # The user will be assigned Django staff permissions if they have a 'admin' or 'superuser' role in Keycloak
 # The user will be assigned Django superuser permissions if they have a 'superuser' role in Keycloak
-
-# (Optional) A function used to process additional scope values in the token
-#            It also provides a helpful hook for each time a user logs in
-# Function Args:
-#   user (User object): The user that is logging in
-#   token (dict): The JWT object used to lookup and create or update the user
-UPDATE_USER_DATA = 'path.to.function'
 
 auth_uri = "https://auth.theboss.io/auth/realms/BOSS"
 client_id = "<auth client id>" # Client ID configured in the Auth Server
