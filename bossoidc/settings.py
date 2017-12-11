@@ -54,7 +54,7 @@ def configure_oidc(auth_uri, client_id, public_uri, scope=None):
         # DP NOTE: Scope is only set for django-oidc / session based auth
         #          as it is up to the caller to request the scope when
         #          retrieving the JWT Bearer token that is used by drf-oidc-auth
-        OIDC_PROVIDERS['KeyCloak']['behavior']['scope'] = scope
+        OIDC_PROVIDERS['KeyCloak']['behaviour']['scope'] = scope
 
     global OIDC_AUTH
     OIDC_AUTH['OIDC_ENDPOINT'] = auth_uri
