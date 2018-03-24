@@ -51,7 +51,8 @@ def configure_oidc(auth_uri, client_id, public_uri, scope=None, client_secret=No
     OIDC_PROVIDERS['KeyCloak']['client_registration']['post_logout_redirect_uris'] = [logout_uri]
 
     # Add a client secret to the config if one is provided:
-    OIDC_PROVIDERS['KeyCloak']['client_registration']['client_secret'] = client_secret
+    if client_secret:
+        OIDC_PROVIDERS['KeyCloak']['client_registration']['client_secret'] = client_secret
 
     if scope:
         # DP NOTE: Scope is only set for django-oidc / session based auth
