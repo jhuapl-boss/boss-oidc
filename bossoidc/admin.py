@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from django.contrib import admin
+from django.contrib.admin.sites import NotRegistered
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
@@ -36,5 +37,7 @@ class UserAdmin(BaseUserAdmin):
 User = get_user_model()
 try:
     admin.site.unregister(User)
+except NotRegistered:
+    pass
 finally:
     admin.site.register(User, UserAdmin)
