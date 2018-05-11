@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from django.conf import settings
+
 # bypass the djangooidc provided page and go directly to the keycloak page
 LOGIN_URL = "/openid/openid/KeyCloak"
 LOGOUT_URL = "/openid/logout"
@@ -27,6 +28,7 @@ OIDC_PROVIDERS = {
         },
         'client_registration': {
             'client_id': None,
+            'client_secret': None,
             'redirect_uris': [],
             'post_logout_redirect_uris': [],
         },
@@ -38,13 +40,15 @@ OIDC_AUTH = {
     'OIDC_ENDPOINT': None,
     'OIDC_AUDIENCES': [],
     'OIDC_RESOLVE_USER_FUNCTION': 'bossoidc.backend.get_user_by_id',
-    'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 4 * 10, # 4 minutes
+    'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 4 * 10,  # 4 minutes
 }
 
-def configure_oidc(auth_uri, client_id, public_uri, scope=None):
+
+def configure_oidc(auth_uri, client_id, client_secret, public_uri, scope=None):
     global OIDC_PROVIDERS
     OIDC_PROVIDERS['KeyCloak']['srv_discovery_url'] = auth_uri
     OIDC_PROVIDERS['KeyCloak']['client_registration']['client_id'] = client_id
+    OIDC_PROVIDERS['KeyCloak']['client_registration']['client_secret'] = client_id
     login_uri = public_uri + '/openid/callback/login/'
     logout_uri = public_uri + '/openid/callback/logout/'
     OIDC_PROVIDERS['KeyCloak']['client_registration']['redirect_uris'] = [login_uri]
