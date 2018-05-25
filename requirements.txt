@@ -1,7 +1,7 @@
+oic==0.13.0
 setuptools>6
 django>=1.8,<1.9
 djangorestframework>=2.4.0
-oic==0.13.0
 
 -e git+http://github.com/jhuapl-boss/django-oidc.git#egg=django-oidc
 -e git+http://github.com/jhuapl-boss/drf-oidc-auth.git#egg=drf-oidc-auth
