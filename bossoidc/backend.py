@@ -107,14 +107,7 @@ def get_user_by_id(request, id_token):
         token = get_authorization_header(request).split()[1]
 
     jwt = JWT().unpack(token).payload()
-
-    try:
-        if 'realm_access' in jwt: # Session logins and Bearer tokens from password Grant Types
-            roles = jwt['realm_access']['roles']
-        else: # Bearer tokens from authorization_code Grant Types
-            roles = jwt['resource_access']['account']['roles']
-    except KeyError:
-        roles = [] # No roles assigned / contained in the token
+    roles = get_roles(jwt)
 
     user.is_staff = 'admin' in roles or 'superuser' in roles
     user.is_superuser = 'superuser' in roles
@@ -124,6 +117,24 @@ def get_user_by_id(request, id_token):
 
     user.save()
     return user
+
+
+def get_roles(decoded_token: dict) -> list:
+    """Get roles declared in the input token"""
+    try:
+        # Session logins and Bearer tokens from password Grant Types
+        if 'realm_access' in decoded_token:
+            roles = decoded_token['realm_access']['roles']
+        else: #  Bearer tokens from authorization_code Grant Types
+            roles = decoded_token['resource_access']['account']['roles']
+    except KeyError:
+        roles = []
+    client_id = decoded_token.get("aud", "")
+    client_roles = decoded_token["resource_access"].get(
+        client_id, {}).get("roles", [])
+    roles.extend(client_roles)
+    return roles
+
 
 class OpenIdConnectBackend(DOIDCBackend):
     def authenticate(self, request=None, **kwargs):
