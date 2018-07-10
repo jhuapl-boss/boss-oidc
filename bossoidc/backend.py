@@ -48,9 +48,12 @@ else:
     UPDATE_USER_DATA_FUNCTION = import_from_string(UPDATE_USER_DATA, 'UPDATE_USER_DATA')
 
 
-def check_username(username):
-    if len(username) > 30: # Django User username is 30 character limited
+def check_username(username: str):
+    """Ensure the input ``username`` is not bigger than what django expects"""
+    username_field = get_user_model()._meta.get_field("username")
+    if len(username) > username_field.max_length:
         raise AuthenticationFailed(_('Username is too long for Django'))
+
 
 def get_user_by_id(request, id_token):
     """ Taken from djangooidc.backends.OpenIdConnectBackend and made common for
