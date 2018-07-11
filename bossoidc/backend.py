@@ -138,16 +138,6 @@ def get_roles(decoded_token: dict) -> list:
     return roles
 
 
-class OpenIdConnectBackend(DOIDCBackend):
-    def authenticate(self, request=None, **kwargs):
-        user = None
-        if not kwargs or 'sub' not in kwargs.keys():
-            return user
-
-        user = get_user_by_id(request, kwargs)
-        return user
-
-
 def get_access_token(request):
     """Retrieve access token from the request
 
@@ -188,3 +178,13 @@ def token_audience_is_valid(audience) -> bool:
     else:
         result = False
     return result
+
+
+class OpenIdConnectBackend(DOIDCBackend):
+    def authenticate(self, request=None, **kwargs):
+        user = None
+        if not kwargs or 'sub' not in kwargs.keys():
+            return user
+
+        user = get_user_by_id(request, kwargs)
+        return user
