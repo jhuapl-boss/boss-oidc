@@ -48,9 +48,12 @@ else:
     UPDATE_USER_DATA_FUNCTION = import_from_string(UPDATE_USER_DATA, 'UPDATE_USER_DATA')
 
 
-def check_username(username):
-    if len(username) > 30: # Django User username is 30 character limited
+def check_username(username: str):
+    """Ensure the input ``username`` is not bigger than what django expects"""
+    username_field = get_user_model()._meta.get_field("username")
+    if len(username) > username_field.max_length:
         raise AuthenticationFailed(_('Username is too long for Django'))
+
 
 def get_user_by_id(request, id_token):
     """ Taken from djangooidc.backends.OpenIdConnectBackend and made common for
@@ -107,15 +110,7 @@ def get_user_by_id(request, id_token):
         user, created = UserModel.objects.update_or_create(**args)
         kc_user = KeycloakModel.objects.create(user = user, UID = uid)
 
-    try:
-        # Session logins and Bearer tokens from password Grant Types
-        if 'realm_access' in access_token:
-            roles = access_token['realm_access']['roles']
-        else:  # Bearer tokens from authorization_code Grant Types
-            roles = access_token['resource_access']['account']['roles']
-    except KeyError:
-        roles = []  # No roles assigned / contained in the token
-
+    roles = get_roles(access_token)
     user.is_staff = 'admin' in roles or 'superuser' in roles
     user.is_superuser = 'superuser' in roles
 
@@ -124,6 +119,24 @@ def get_user_by_id(request, id_token):
 
     user.save()
     return user
+
+
+def get_roles(decoded_token: dict) -> list:
+    """Get roles declared in the input token"""
+    try:
+        # Session logins and Bearer tokens from password Grant Types
+        if 'realm_access' in decoded_token:
+            roles = decoded_token['realm_access']['roles']
+        else: #  Bearer tokens from authorization_code Grant Types
+            roles = decoded_token['resource_access']['account']['roles']
+    except KeyError:
+        roles = []
+    client_id = decoded_token.get("aud", "")
+    client_roles = decoded_token["resource_access"].get(
+        client_id, {}).get("roles", [])
+    roles.extend(client_roles)
+    return roles
+
 
 class OpenIdConnectBackend(DOIDCBackend):
     def authenticate(self, request=None, **kwargs):
