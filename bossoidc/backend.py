@@ -56,6 +56,12 @@ def get_user_by_id(request, id_token):
     """ Taken from djangooidc.backends.OpenIdConnectBackend and made common for
     drf-oidc-auth to make use of the same create user functionality
     """
+
+    access_token = get_access_token(request)
+    audience = get_token_audience(access_token)
+    if not token_audience_is_valid(audience):
+        return None
+
     UserModel = get_user_model()
     uid = id_token['sub']
     username = id_token['preferred_username']
@@ -101,20 +107,14 @@ def get_user_by_id(request, id_token):
         user, created = UserModel.objects.update_or_create(**args)
         kc_user = KeycloakModel.objects.create(user = user, UID = uid)
 
-    if 'access_token' in request.session: # Session based login
-        token = request.session['access_token']
-    else: # Bearer Token login
-        token = get_authorization_header(request).split()[1]
-
-    jwt = JWT().unpack(token).payload()
-
     try:
-        if 'realm_access' in jwt: # Session logins and Bearer tokens from password Grant Types
-            roles = jwt['realm_access']['roles']
-        else: # Bearer tokens from authorization_code Grant Types
-            roles = jwt['resource_access']['account']['roles']
+        # Session logins and Bearer tokens from password Grant Types
+        if 'realm_access' in access_token:
+            roles = access_token['realm_access']['roles']
+        else:  # Bearer tokens from authorization_code Grant Types
+            roles = access_token['resource_access']['account']['roles']
     except KeyError:
-        roles = [] # No roles assigned / contained in the token
+        roles = []  # No roles assigned / contained in the token
 
     user.is_staff = 'admin' in roles or 'superuser' in roles
     user.is_superuser = 'superuser' in roles
@@ -133,3 +133,45 @@ class OpenIdConnectBackend(DOIDCBackend):
 
         user = get_user_by_id(request, kwargs)
         return user
+
+
+def get_access_token(request):
+    """Retrieve access token from the request
+
+    The access token is searched first the request's session. If it is not
+    found it is then searched in the request's ``Authorization`` header.
+
+    """
+    access_token = request.session.get("access_token")
+    if access_token is None:  # Bearer token login
+        access_token = get_authorization_header(request).split()[1]
+    return JWT().unpack(access_token).payload()
+
+
+def get_token_audience(token: dict):
+    """Retrieve the token's intended audience
+
+    According to the openid-connect spec `aud` may be a string or a list:
+
+        http://openid.net/specs/openid-connect-basic-1_0.html#IDToken
+
+    """
+
+    aud = token.get("aud", [])
+    return [aud] if isinstance(aud, str) else aud
+
+
+def token_audience_is_valid(audience) -> bool:
+    """Check if the input audience is valid"""
+
+    client_id = settings.OIDC_PROVIDERS[
+        "KeyCloak"]["client_registration"]["client_id"]
+    trusted_audiences = set(settings.OIDC_AUTH.get("OIDC_AUDIENCES", []))
+    trusted_audiences.add(client_id)
+    for aud in audience:
+        if aud in trusted_audiences:
+            result = True
+            break
+    else:
+        result = False
+    return result
