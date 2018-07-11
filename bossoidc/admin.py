@@ -13,12 +13,10 @@
 # limitations under the License.
 
 from django.contrib import admin
-from django.contrib.admin.sites import NotRegistered
-from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
 
 from bossoidc.models import Keycloak
-
 
 # Define an inline admin descriptor for Keycloak model
 # which acts a bit like a singleton
@@ -27,17 +25,10 @@ class KeycloakInline(admin.StackedInline):
     can_delete = False
     verbose_name_plural = 'Keycloak'
 
-
 # Define a new User admin
 class UserAdmin(BaseUserAdmin):
-    inlines = (KeycloakInline,)
-
+    inlines = (KeycloakInline, )
 
 # Re-register UserAdmin
-User = get_user_model()
-try:
-    admin.site.unregister(User)
-except NotRegistered:
-    pass
-finally:
-    admin.site.register(User, UserAdmin)
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
