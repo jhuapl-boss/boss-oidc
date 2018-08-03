@@ -27,7 +27,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='boss-oidc',
-    version='1.2',
+    version='1.2.1',
     packages=['bossoidc'],
     url='https://github.com/jhuapl-boss/boss-oidc',
     license="Apache Software License",
