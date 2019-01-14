@@ -16,34 +16,55 @@
 # limitations under the License.
 
 import os
+from setuptools import setup, find_packages
+from setuptools.command.test import test as TestCommand
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+here = os.path.abspath(os.path.dirname(__file__))
+def read(filename):
+    with open(os.path.join(here, filename), 'r') as fh:
+        return fh.read()
 
-# allow setup.py to be run from any path
-os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
+# Inspired by the example at https://pytest.org/latest/goodpractises.html
+class XmlTestCommand(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+
+    def run_tests(self):
+        from tests.test import runtests
+        runtests()
 
 setup(
     name='boss-oidc',
     version='1.2.1',
-    packages=['bossoidc', 'bossoidc/migrations'],
+    packages=find_packages(),
     url='https://github.com/jhuapl-boss/boss-oidc',
     license="Apache Software License",
     author='Derek Pryor',
     author_email='Derek.Pryor@jhuapl.edu',
     description='Django Authentication OpenID Connect plugin for the Boss SSO',
-    install_requires=[
+    long_description=read('README.md'),
+    install_requires = [
         'django>=1.8',
         'djangorestframework>=2.4.0',
-        'oic>=0.7.6',
-        'django-oidc>=0.1.3',
-        'drf-oidc-auth>=0.8'
+        'oic==0.13.0',
+        #'jwkest==1.4.0', TODO figure out dependency
+        #'django-oidc@http://github.com/jhuapl-boss/django-oidc/archive/master.zip',
+        #'drf-oidc-auth@http://github.com/jhuapl-boss/drf-oidc-auth/archive/master.zip'
+    ],
+    # TODO pin versions of django-oidc / drf-oidc-auth
+    # Depdency Links are deprecated but full support for PEP 508 isn't expected
+    # until version 10. Commented links in install_requires are the PEP 508 format
+    dependency_links = [
+        'git+http://github.com/jhuapl-boss/django-oidc.git#egg=django-oidc',
+        'git+http://github.com/jhuapl-boss/drf-oidc-auth.git#egg=drf-oidc-auth',
+    ],
+    tests_require = [
+        'coverage',
     ],
     classifiers=[
         'Environment :: Web Environment',
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production',
         'Framework :: Django',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
@@ -52,4 +73,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
     ],
+    cmdclass = {
+        'test': XmlTestCommand
+    },
 )

@@ -34,7 +34,7 @@ LOAD_USER_ROLES = getattr(settings, 'LOAD_USER_ROLES', None)
 if LOAD_USER_ROLES is None:
     # DP NOTE: had issues with import_from_string loading bossoidc.backend.load_user_roles
     LOAD_USER_ROLES_FUNCTION = load_user_roles
-else:
+else: # pragma: no cover
     LOAD_USER_ROLES_FUNCTION = import_from_string(LOAD_USER_ROLES, 'LOAD_USER_ROLES')
 
 
@@ -44,7 +44,7 @@ def update_user_data(user, token):
 UPDATE_USER_DATA = getattr(settings, 'UPDATE_USER_DATA', None)
 if UPDATE_USER_DATA is None:
     UPDATE_USER_DATA_FUNCTION = update_user_data
-else:
+else: # pragma: no cover
     UPDATE_USER_DATA_FUNCTION = import_from_string(UPDATE_USER_DATA, 'UPDATE_USER_DATA')
 
 
@@ -59,6 +59,10 @@ def get_user_by_id(request, id_token):
     """ Taken from djangooidc.backends.OpenIdConnectBackend and made common for
     drf-oidc-auth to make use of the same create user functionality
     """
+
+    # DP ???: Why both passing in id_token and getting the access token?
+    #         they seem to be the same thing
+    # DP ???: Where is session['access_token'] set?
 
     access_token = get_access_token(request)
     audience = get_token_audience(access_token)
@@ -123,6 +127,8 @@ def get_user_by_id(request, id_token):
 
 def get_roles(decoded_token: dict) -> list:
     """Get roles declared in the input token"""
+
+    # Extract realm scoped roles
     try:
         # Session logins and Bearer tokens from password Grant Types
         if 'realm_access' in decoded_token:
@@ -131,10 +137,17 @@ def get_roles(decoded_token: dict) -> list:
             roles = decoded_token['resource_access']['account']['roles']
     except KeyError:
         roles = []
-    client_id = decoded_token.get("aud", "")
-    client_roles = decoded_token["resource_access"].get(
-        client_id, {}).get("roles", [])
-    roles.extend(client_roles)
+
+    # Extract client scoped roles
+    try:
+        # Handle multiple aud?
+        client_roles = decoded_token['resource_access'] \
+                                    [decoded_token['aud']] \
+                                    ['roles']
+        roles.extend(client_roles)
+    except KeyError:
+        pass
+
     return roles
 
 
@@ -167,10 +180,12 @@ def get_token_audience(token: dict):
 def token_audience_is_valid(audience) -> bool:
     """Check if the input audience is valid"""
 
-    client_id = settings.OIDC_PROVIDERS[
-        "KeyCloak"]["client_registration"]["client_id"]
-    trusted_audiences = set(settings.OIDC_AUTH.get("OIDC_AUDIENCES", []))
-    trusted_audiences.add(client_id)
+    if not hasattr(settings, 'OIDC_AUTH'):
+        # Don't assume that the bossoidc settings module was used
+        return False
+
+    trusted_audiences = settings.OIDC_AUTH.get('OIDC_AUDIENCES', [])
+
     for aud in audience:
         if aud in trusted_audiences:
             result = True
@@ -180,7 +195,7 @@ def token_audience_is_valid(audience) -> bool:
     return result
 
 
-class OpenIdConnectBackend(DOIDCBackend):
+class OpenIdConnectBackend(DOIDCBackend): # pragma: no cover
     def authenticate(self, request=None, **kwargs):
         user = None
         if not kwargs or 'sub' not in kwargs.keys():
