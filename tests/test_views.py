@@ -112,12 +112,6 @@ class TestViews(TestCase):
     def test_user_login_session(self):
         self._configure_settings()
 
-        # DP NOTE: bossoidc.backend.get_user_by_id has an argument `id_token`.
-        #          This is actually the response from the userinfo request
-        #          The get_user_by_id function also decodes the `access_token`
-        #          to get the user's roles, as the userinfo response doesn't
-        #          contain that information
-
         with requests_mock.Mocker() as m:
             # configure Keycloak urls
             token_response = {
