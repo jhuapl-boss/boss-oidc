@@ -52,7 +52,7 @@ REST_FRAMEWORK = {
 # Function Args:
 #   user (User object): The user that is logging in
 #   token (dict): The user's userinfo that was requested from Keycloak and used
-                  to lookup and create or update the user object
+#                 to lookup and create or update the user object
 UPDATE_USER_DATA = 'path.to.function'
 
 # (Optional) A function used to process a user's roles for the application
