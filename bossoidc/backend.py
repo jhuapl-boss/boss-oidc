@@ -55,14 +55,10 @@ def check_username(username: str):
         raise AuthenticationFailed(_('Username is too long for Django'))
 
 
-def get_user_by_id(request, id_token):
+def get_user_by_id(request, userinfo):
     """ Taken from djangooidc.backends.OpenIdConnectBackend and made common for
     drf-oidc-auth to make use of the same create user functionality
     """
-
-    # DP ???: Why both passing in id_token and getting the access token?
-    #         they seem to be the same thing
-    # DP ???: Where is session['access_token'] set?
 
     access_token = get_access_token(request)
     audience = get_token_audience(access_token)
@@ -70,25 +66,25 @@ def get_user_by_id(request, id_token):
         return None
 
     UserModel = get_user_model()
-    uid = id_token['sub']
-    username = id_token['preferred_username']
+    uid = userinfo['sub']
+    username = userinfo['preferred_username']
 
     check_username(username)
 
     # Some OP may actually choose to withhold some information, so we must test if it is present
     openid_data = {'last_login': datetime.datetime.now()}
-    if 'first_name' in id_token.keys():
-        openid_data['first_name'] = id_token['first_name']
-    if 'given_name' in id_token.keys():
-        openid_data['first_name'] = id_token['given_name']
-    if 'christian_name' in id_token.keys():
-        openid_data['first_name'] = id_token['christian_name']
-    if 'family_name' in id_token.keys():
-        openid_data['last_name'] = id_token['family_name']
-    if 'last_name' in id_token.keys():
-        openid_data['last_name'] = id_token['last_name']
-    if 'email' in id_token.keys():
-        openid_data['email'] = id_token['email']
+    if 'first_name' in userinfo.keys():
+        openid_data['first_name'] = userinfo['first_name']
+    if 'given_name' in userinfo.keys():
+        openid_data['first_name'] = userinfo['given_name']
+    if 'christian_name' in userinfo.keys():
+        openid_data['first_name'] = userinfo['christian_name']
+    if 'family_name' in userinfo.keys():
+        openid_data['last_name'] = userinfo['family_name']
+    if 'last_name' in userinfo.keys():
+        openid_data['last_name'] = userinfo['last_name']
+    if 'email' in userinfo.keys():
+        openid_data['email'] = userinfo['email']
 
     # DP NOTE: The thing that we are trying to prevent is the user account being
     #          deleted and recreated in Keycloak (all user data the same, but a
@@ -119,7 +115,7 @@ def get_user_by_id(request, id_token):
     user.is_superuser = 'superuser' in roles
 
     LOAD_USER_ROLES_FUNCTION(user, roles)
-    UPDATE_USER_DATA_FUNCTION(user, id_token)
+    UPDATE_USER_DATA_FUNCTION(user, userinfo)
 
     user.save()
     return user
@@ -134,19 +130,21 @@ def get_roles(decoded_token: dict) -> list:
         if 'realm_access' in decoded_token:
             roles = decoded_token['realm_access']['roles']
         else: #  Bearer tokens from authorization_code Grant Types
+              # DP ???: a session login uses an authorization_code code, not sure
+              #         about the difference
             roles = decoded_token['resource_access']['account']['roles']
     except KeyError:
         roles = []
 
-    # Extract client scoped roles
-    try:
-        # Handle multiple aud?
-        client_roles = decoded_token['resource_access'] \
-                                    [decoded_token['aud']] \
-                                    ['roles']
-        roles.extend(client_roles)
-    except KeyError:
-        pass
+    # Extract all client scoped roles
+    for name, client in decoded_token.get('resource_access', {}).items():
+        if name is 'account':
+            continue
+
+        try:
+            roles.extend(client['roles'])
+        except KeyError: # pragma no cover
+            pass
 
     return roles
 

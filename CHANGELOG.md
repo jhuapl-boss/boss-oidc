@@ -1,5 +1,6 @@
 # BOSS OIDC Django Authentication Plugin
 
+* v1.2.2 : Cleanup of packaging and added unit tests
 * v1.2.1 : Merged in PR #28 to address missing migrations directory from the installed library
 * v1.2 : Merged in PRs and addressed issues
   * Merged in PR #14 (Adding support for client secret)

@@ -23,6 +23,7 @@ def django_setup():
                 'django.contrib.admin.apps.SimpleAdminConfig',
                 'django.contrib.staticfiles',
                 'bossoidc',
+                'djangooidc',
             ),
 
             MIDDLEWARE_CLASSES = (
@@ -32,6 +33,21 @@ def django_setup():
                 'django.contrib.auth.middleware.AuthenticationMiddleware',
                 'django.contrib.messages.middleware.MessageMiddleware',
             ),
+
+            ROOT_URLCONF = 'tests.urls',
+
+            ALLOWED_HOSTS = ['testserver'],
+
+            AUTHENTICATION_BACKENDS = [
+                'bossoidc.backend.OpenIdConnectBackend',
+            ],
+
+            REST_FRAMEWORK = {
+                'DEFAULT_AUTHENTICATION_CLASSES': (
+                    #'rest_framework.authentication.SessionAuthentication',
+                    'oidc_auth.authentication.BearerTokenAuthentication',
+                ),
+            },
         )
 
         django.setup()

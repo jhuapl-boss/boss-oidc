@@ -22,7 +22,7 @@ from rest_framework.exceptions import AuthenticationFailed
 
 from jwkest.jwt import JWT
 JWT_HEADERS = {
-    'alg': 'HS256',
+    'alg': 'RS256',
     'typ': 'JWT',
 }
 

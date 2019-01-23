@@ -36,7 +36,7 @@ class XmlTestCommand(TestCommand):
 
 setup(
     name='boss-oidc',
-    version='1.2.1',
+    version='1.2.2',
     packages=find_packages(),
     url='https://github.com/jhuapl-boss/boss-oidc',
     license="Apache Software License",
@@ -45,10 +45,10 @@ setup(
     description='Django Authentication OpenID Connect plugin for the Boss SSO',
     long_description=read('README.md'),
     install_requires = [
-        'django>=1.8',
-        'djangorestframework>=2.4.0',
-        'oic==0.13.0',
-        #'jwkest==1.4.0', TODO figure out dependency
+        'django<2.0',
+        'djangorestframework',
+        'oic==0.13.0', # Pinned due to issues with the library
+        'pyjwkest>=1.0.0',
         #'django-oidc@http://github.com/jhuapl-boss/django-oidc/archive/master.zip',
         #'drf-oidc-auth@http://github.com/jhuapl-boss/drf-oidc-auth/archive/master.zip'
     ],
@@ -61,6 +61,8 @@ setup(
     ],
     tests_require = [
         'coverage',
+        'requests_mock',
+        'pyjwt',
     ],
     classifiers=[
         'Environment :: Web Environment',
