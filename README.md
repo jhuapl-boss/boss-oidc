@@ -87,7 +87,6 @@ url(r'openid/', include('djangooidc.urls')),
 Run the following migration to create the table for storing the Keycloak UID
 
 ```sh
-$ python manage.py makemigrations bossoidc
 $ python manage.py migrate
 ```
 
@@ -102,6 +101,12 @@ Features
 * Fully integrated with Django's internal accounts and permission system
 * Stores Keycloak UID to improve Keycloak - Django account association
 * Support for OpenID Connect Bearer Token Authentication
+
+
+Contributing
+------------
+
+If the bossoidc model is updated or extended to update the Django ORM migrations files run `python setup.py makemigrations` and commit the newly generated files.
 
 
 Legal
