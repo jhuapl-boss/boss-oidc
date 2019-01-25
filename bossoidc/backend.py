@@ -28,6 +28,13 @@ from jwkest.jwt import JWT
 import json
 
 def load_user_roles(user, roles):
+    """Default implementation of the LOAD_USER_ROLES callback
+
+    Args:
+        user (UserModel): Django user object for the user logging in
+        roles (list[str]): List of Keycloak roles assigned to the user
+                           Note: Contains both realm roles and client roles
+    """
     pass
 
 LOAD_USER_ROLES = getattr(settings, 'LOAD_USER_ROLES', None)
@@ -38,7 +45,14 @@ else: # pragma: no cover
     LOAD_USER_ROLES_FUNCTION = import_from_string(LOAD_USER_ROLES, 'LOAD_USER_ROLES')
 
 
-def update_user_data(user, token):
+def update_user_data(user, userinfo):
+    """Default implementation of the UPDATE_USER_DATA callback
+
+    Args:
+        user (UserModel): Django user object for the user logging in
+        userinfo (dict): Dictionary of userinfo requested from Keycloak with the
+                         user's profile data
+    """
     pass
 
 UPDATE_USER_DATA = getattr(settings, 'UPDATE_USER_DATA', None)
@@ -48,16 +62,41 @@ else: # pragma: no cover
     UPDATE_USER_DATA_FUNCTION = import_from_string(UPDATE_USER_DATA, 'UPDATE_USER_DATA')
 
 
-def check_username(username: str):
-    """Ensure the input ``username`` is not bigger than what django expects"""
+def check_username(username):
+    """Ensure that the given username does exceed the current user models field
+    length
+
+    Args:
+        username (str): Username of the user logging in
+
+    Raises:
+        AuthenticationFailed: If the username length exceeds the fields max length
+    """
     username_field = get_user_model()._meta.get_field("username")
     if len(username) > username_field.max_length:
         raise AuthenticationFailed(_('Username is too long for Django'))
 
 
 def get_user_by_id(request, userinfo):
-    """ Taken from djangooidc.backends.OpenIdConnectBackend and made common for
+    """Get or create the user object based on the user's information
+
+    Note: Taken from djangooidc.backends.OpenIdConnectBackend and made common for
     drf-oidc-auth to make use of the same create user functionality
+
+    Note: The user's token is loaded from the request session or header to load_user_roles
+    the user's Keycloak roles
+
+    Args:
+        request (Request): Django request from the user
+        userinfo (dict): Dictionary of userinfo requested from Keycloak with the
+                         user's profile data
+
+    Returns:
+        UserModel: user object for the requesting user
+        None: If the requesting user's token's audience is not valid
+
+    Raises:
+        AuthenticationFailed: If the requesting user's username is too long
     """
 
     access_token = get_access_token(request)
@@ -121,8 +160,17 @@ def get_user_by_id(request, userinfo):
     return user
 
 
-def get_roles(decoded_token: dict) -> list:
-    """Get roles declared in the input token"""
+def get_roles(decoded_token):
+    """Get roles declared in the input token
+
+    Note: returns both the realm roles and client roles
+
+    Args:
+        decoded_token (dict): The user's decoded bearer token
+
+    Returns:
+        list[str]: List of role names
+    """
 
     # Extract realm scoped roles
     try:
@@ -155,6 +203,11 @@ def get_access_token(request):
     The access token is searched first the request's session. If it is not
     found it is then searched in the request's ``Authorization`` header.
 
+    Args:
+        request (Request): Django request from the user
+
+    Returns:
+        dict: JWT payload of the bearer token
     """
     access_token = request.session.get("access_token")
     if access_token is None:  # Bearer token login
@@ -162,21 +215,32 @@ def get_access_token(request):
     return JWT().unpack(access_token).payload()
 
 
-def get_token_audience(token: dict):
+def get_token_audience(token):
     """Retrieve the token's intended audience
 
     According to the openid-connect spec `aud` may be a string or a list:
-
         http://openid.net/specs/openid-connect-basic-1_0.html#IDToken
 
+    Args:
+        token (dict): The user's decoded bearer token
+
+    Returns:
+        list[str]: The list of token audiences
     """
 
     aud = token.get("aud", [])
     return [aud] if isinstance(aud, str) else aud
 
 
-def token_audience_is_valid(audience) -> bool:
-    """Check if the input audience is valid"""
+def token_audience_is_valid(audience):
+    """Check if the input audiences is valid
+
+    Args:
+        audience (list[str]): List of token audiences
+
+    Returns:
+        bool: If any of the audience is in the list of requested audiences
+    """
 
     if not hasattr(settings, 'OIDC_AUTH'):
         # Don't assume that the bossoidc settings module was used
@@ -194,6 +258,10 @@ def token_audience_is_valid(audience) -> bool:
 
 
 class OpenIdConnectBackend(DOIDCBackend): # pragma: no cover
+    """Subclass of the Django OIDC Backend that makes use of our get_user_by_id
+    implementation
+    """
+
     def authenticate(self, request=None, **kwargs):
         user = None
         if not kwargs or 'sub' not in kwargs.keys():
