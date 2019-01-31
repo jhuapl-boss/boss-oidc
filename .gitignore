@@ -1,6 +1,12 @@
 __pycache__
 
 *.egg-info
+.eggs
+
+build/
+
+# Testing
+.coverage
 
 # pycharm IDE artifacts
 .idea/

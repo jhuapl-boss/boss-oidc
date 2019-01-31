@@ -28,36 +28,75 @@ from jwkest.jwt import JWT
 import json
 
 def load_user_roles(user, roles):
+    """Default implementation of the LOAD_USER_ROLES callback
+
+    Args:
+        user (UserModel): Django user object for the user logging in
+        roles (list[str]): List of Keycloak roles assigned to the user
+                           Note: Contains both realm roles and client roles
+    """
     pass
 
 LOAD_USER_ROLES = getattr(settings, 'LOAD_USER_ROLES', None)
 if LOAD_USER_ROLES is None:
     # DP NOTE: had issues with import_from_string loading bossoidc.backend.load_user_roles
     LOAD_USER_ROLES_FUNCTION = load_user_roles
-else:
+else: # pragma: no cover
     LOAD_USER_ROLES_FUNCTION = import_from_string(LOAD_USER_ROLES, 'LOAD_USER_ROLES')
 
 
-def update_user_data(user, token):
+def update_user_data(user, userinfo):
+    """Default implementation of the UPDATE_USER_DATA callback
+
+    Args:
+        user (UserModel): Django user object for the user logging in
+        userinfo (dict): Dictionary of userinfo requested from Keycloak with the
+                         user's profile data
+    """
     pass
 
 UPDATE_USER_DATA = getattr(settings, 'UPDATE_USER_DATA', None)
 if UPDATE_USER_DATA is None:
     UPDATE_USER_DATA_FUNCTION = update_user_data
-else:
+else: # pragma: no cover
     UPDATE_USER_DATA_FUNCTION = import_from_string(UPDATE_USER_DATA, 'UPDATE_USER_DATA')
 
 
-def check_username(username: str):
-    """Ensure the input ``username`` is not bigger than what django expects"""
+def check_username(username):
+    """Ensure that the given username does exceed the current user models field
+    length
+
+    Args:
+        username (str): Username of the user logging in
+
+    Raises:
+        AuthenticationFailed: If the username length exceeds the fields max length
+    """
     username_field = get_user_model()._meta.get_field("username")
     if len(username) > username_field.max_length:
         raise AuthenticationFailed(_('Username is too long for Django'))
 
 
-def get_user_by_id(request, id_token):
-    """ Taken from djangooidc.backends.OpenIdConnectBackend and made common for
+def get_user_by_id(request, userinfo):
+    """Get or create the user object based on the user's information
+
+    Note: Taken from djangooidc.backends.OpenIdConnectBackend and made common for
     drf-oidc-auth to make use of the same create user functionality
+
+    Note: The user's token is loaded from the request session or header to load_user_roles
+    the user's Keycloak roles
+
+    Args:
+        request (Request): Django request from the user
+        userinfo (dict): Dictionary of userinfo requested from Keycloak with the
+                         user's profile data
+
+    Returns:
+        UserModel: user object for the requesting user
+        None: If the requesting user's token's audience is not valid
+
+    Raises:
+        AuthenticationFailed: If the requesting user's username is too long
     """
 
     access_token = get_access_token(request)
@@ -66,25 +105,25 @@ def get_user_by_id(request, id_token):
         return None
 
     UserModel = get_user_model()
-    uid = id_token['sub']
-    username = id_token['preferred_username']
+    uid = userinfo['sub']
+    username = userinfo['preferred_username']
 
     check_username(username)
 
     # Some OP may actually choose to withhold some information, so we must test if it is present
     openid_data = {'last_login': datetime.datetime.now()}
-    if 'first_name' in id_token.keys():
-        openid_data['first_name'] = id_token['first_name']
-    if 'given_name' in id_token.keys():
-        openid_data['first_name'] = id_token['given_name']
-    if 'christian_name' in id_token.keys():
-        openid_data['first_name'] = id_token['christian_name']
-    if 'family_name' in id_token.keys():
-        openid_data['last_name'] = id_token['family_name']
-    if 'last_name' in id_token.keys():
-        openid_data['last_name'] = id_token['last_name']
-    if 'email' in id_token.keys():
-        openid_data['email'] = id_token['email']
+    if 'first_name' in userinfo.keys():
+        openid_data['first_name'] = userinfo['first_name']
+    if 'given_name' in userinfo.keys():
+        openid_data['first_name'] = userinfo['given_name']
+    if 'christian_name' in userinfo.keys():
+        openid_data['first_name'] = userinfo['christian_name']
+    if 'family_name' in userinfo.keys():
+        openid_data['last_name'] = userinfo['family_name']
+    if 'last_name' in userinfo.keys():
+        openid_data['last_name'] = userinfo['last_name']
+    if 'email' in userinfo.keys():
+        openid_data['email'] = userinfo['email']
 
     # DP NOTE: The thing that we are trying to prevent is the user account being
     #          deleted and recreated in Keycloak (all user data the same, but a
@@ -115,26 +154,46 @@ def get_user_by_id(request, id_token):
     user.is_superuser = 'superuser' in roles
 
     LOAD_USER_ROLES_FUNCTION(user, roles)
-    UPDATE_USER_DATA_FUNCTION(user, id_token)
+    UPDATE_USER_DATA_FUNCTION(user, userinfo)
 
     user.save()
     return user
 
 
-def get_roles(decoded_token: dict) -> list:
-    """Get roles declared in the input token"""
+def get_roles(decoded_token):
+    """Get roles declared in the input token
+
+    Note: returns both the realm roles and client roles
+
+    Args:
+        decoded_token (dict): The user's decoded bearer token
+
+    Returns:
+        list[str]: List of role names
+    """
+
+    # Extract realm scoped roles
     try:
         # Session logins and Bearer tokens from password Grant Types
         if 'realm_access' in decoded_token:
             roles = decoded_token['realm_access']['roles']
         else: #  Bearer tokens from authorization_code Grant Types
+              # DP ???: a session login uses an authorization_code code, not sure
+              #         about the difference
             roles = decoded_token['resource_access']['account']['roles']
     except KeyError:
         roles = []
-    client_id = decoded_token.get("aud", "")
-    client_roles = decoded_token["resource_access"].get(
-        client_id, {}).get("roles", [])
-    roles.extend(client_roles)
+
+    # Extract all client scoped roles
+    for name, client in decoded_token.get('resource_access', {}).items():
+        if name is 'account':
+            continue
+
+        try:
+            roles.extend(client['roles'])
+        except KeyError: # pragma no cover
+            pass
+
     return roles
 
 
@@ -144,6 +203,11 @@ def get_access_token(request):
     The access token is searched first the request's session. If it is not
     found it is then searched in the request's ``Authorization`` header.
 
+    Args:
+        request (Request): Django request from the user
+
+    Returns:
+        dict: JWT payload of the bearer token
     """
     access_token = request.session.get("access_token")
     if access_token is None:  # Bearer token login
@@ -151,26 +215,39 @@ def get_access_token(request):
     return JWT().unpack(access_token).payload()
 
 
-def get_token_audience(token: dict):
+def get_token_audience(token):
     """Retrieve the token's intended audience
 
     According to the openid-connect spec `aud` may be a string or a list:
-
         http://openid.net/specs/openid-connect-basic-1_0.html#IDToken
 
+    Args:
+        token (dict): The user's decoded bearer token
+
+    Returns:
+        list[str]: The list of token audiences
     """
 
     aud = token.get("aud", [])
     return [aud] if isinstance(aud, str) else aud
 
 
-def token_audience_is_valid(audience) -> bool:
-    """Check if the input audience is valid"""
+def token_audience_is_valid(audience):
+    """Check if the input audiences is valid
 
-    client_id = settings.OIDC_PROVIDERS[
-        "KeyCloak"]["client_registration"]["client_id"]
-    trusted_audiences = set(settings.OIDC_AUTH.get("OIDC_AUDIENCES", []))
-    trusted_audiences.add(client_id)
+    Args:
+        audience (list[str]): List of token audiences
+
+    Returns:
+        bool: If any of the audience is in the list of requested audiences
+    """
+
+    if not hasattr(settings, 'OIDC_AUTH'):
+        # Don't assume that the bossoidc settings module was used
+        return False
+
+    trusted_audiences = settings.OIDC_AUTH.get('OIDC_AUDIENCES', [])
+
     for aud in audience:
         if aud in trusted_audiences:
             result = True
@@ -180,7 +257,11 @@ def token_audience_is_valid(audience) -> bool:
     return result
 
 
-class OpenIdConnectBackend(DOIDCBackend):
+class OpenIdConnectBackend(DOIDCBackend): # pragma: no cover
+    """Subclass of the Django OIDC Backend that makes use of our get_user_by_id
+    implementation
+    """
+
     def authenticate(self, request=None, **kwargs):
         user = None
         if not kwargs or 'sub' not in kwargs.keys():

@@ -1,0 +1,31 @@
+{
+  "jti": "<opaque>",
+  "exp": <timesamp>,
+  "nbf": 0,
+  "iat": <timesamp>,
+  "iss": "https://<keycloak.tld>/auth/realms/<realm>",
+  "aud": "<keycloak client>",
+  "sub": "<keycloak uid>",
+  "typ": "Bearer",
+  "azp": "<keycloak client>",
+
+  "session_state": "<opaque>",
+  "client_session": "<opaque>",
+  "allowed-origins": [],
+
+  "name": "",
+  "preferred_username": "<keycloak username>",
+
+  "realm_access": {
+    "roles": [
+      "..."
+    ]
+  },
+  "resource_access": {
+    "<keycloak client>": {
+      "roles": [
+        "..."
+      ]
+    }
+  }
+}
