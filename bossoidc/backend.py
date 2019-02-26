@@ -26,6 +26,10 @@ from bossoidc.models import Keycloak as KeycloakModel
 from jwkest.jwt import JWT
 
 import json
+import logging
+
+def _log(child):
+    return logging.getLogger(__name__).getChild(child)
 
 def load_user_roles(user, roles):
     """Default implementation of the LOAD_USER_ROLES callback
@@ -133,16 +137,19 @@ def get_user_by_id(request, userinfo):
     try: # try to lookup by keycloak UID first
         kc_user = KeycloakModel.objects.get(UID = uid)
         user = kc_user.user
-    except: # user doesn't exist with a keycloak UID
+    except KeycloakModel.DoesNotExist: # user doesn't exist with a keycloak UID
         try:
             user = UserModel.objects.get_by_natural_key(username)
+
+            fmt = "Deleting user '{}' becuase it matches the authenticated Keycloak username"
+            _log('get_user_by_id').info(fmt.format(username))
 
             # remove existing user account, so permissions are not transfered
             # DP NOTE: required, as the username field is still a unique field,
             #          which doesn't allow multiple users in the table with the
             #          same username
             user.delete()
-        except:
+        except UserModel.DoesNotExist:
             pass
 
         args = {UserModel.USERNAME_FIELD: username, 'defaults': openid_data, }
