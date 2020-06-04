@@ -20,7 +20,7 @@ from rest_framework.settings import import_from_string
 from rest_framework.authentication import get_authorization_header
 
 from django.utils.translation import ugettext as _
-from djangooidc.backends import OpenIdConnectBackend as DOIDCBackend
+from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 from bossoidc.models import Keycloak as KeycloakModel
 from jwkest.jwt import JWT
@@ -107,7 +107,23 @@ def get_user_by_id(request, userinfo):
     audience = get_token_audience(access_token)
     if not token_audience_is_valid(audience):
         return None
+    return get_user_with_id(access_token, userinfo)
 
+def get_user_with_id(access_token, userinfo):
+    """Common functionality for getting or creating the user.  Used by both
+    mozilla_django_oidc and drf-oidc-auth.
+
+    Args:
+        access_token ():
+        userinfo (dict): Dictionary of userinfo requested from Keycloak with the
+
+    Returns:
+        UserModel: user object for the requesting user
+        None: If the requesting user's token's audience is not valid
+
+    Raises:
+        AuthenticationFailed: If the requesting user's username is too long
+    """
     UserModel = get_user_model()
     uid = userinfo['sub']
     username = userinfo['preferred_username']
@@ -141,7 +157,7 @@ def get_user_by_id(request, userinfo):
         try:
             user = UserModel.objects.get_by_natural_key(username)
 
-            fmt = "Deleting user '{}' becuase it matches the authenticated Keycloak username"
+            fmt = "Deleting user '{}' because it matches the authenticated Keycloak username"
             _log('get_user_by_id').info(fmt.format(username))
 
             # remove existing user account, so permissions are not transfered
@@ -264,15 +280,31 @@ def token_audience_is_valid(audience):
     return result
 
 
-class OpenIdConnectBackend(DOIDCBackend): # pragma: no cover
+class OpenIdConnectBackend(OIDCAuthenticationBackend): # pragma: no cover
     """Subclass of the Django OIDC Backend that makes use of our get_user_by_id
     implementation
     """
 
-    def authenticate(self, request=None, **kwargs):
-        user = None
-        if not kwargs or 'sub' not in kwargs.keys():
-            return user
+    def verify_claims(self, claims):
+        scopes = self.get_settings('OIDC_RP_SCOPES', 'openid email').split()
 
-        user = get_user_by_id(request, kwargs)
+        # Special handling for the bossadmin user.
+        if 'preferred_username' in claims and claims['preferred_username'] == 'bossadmin':
+            return True
+
+        for field in scopes:
+            if field not in claims:
+                return False
+
+        return True
+
+    def get_or_create_user(self, access_token, id_token, payload):
+        user_info = self.get_userinfo(access_token, id_token, payload)
+        claims_verified = self.verify_claims(user_info)
+        if not claims_verified:
+            msg = 'Claims verification failed'
+            raise SuspiciousOperation(msg)
+
+        decoded_token = JWT().unpack(access_token).payload()
+        user = get_user_with_id(decoded_token, user_info)
         return user
