@@ -286,11 +286,15 @@ class OpenIdConnectBackend(OIDCAuthenticationBackend): # pragma: no cover
     """
 
     def verify_claims(self, claims):
-        scopes = self.get_settings('OIDC_RP_SCOPES', 'openid email').split()
+        """Ensure required claims provided.
 
-        # Special handling for the bossadmin user.
-        if 'preferred_username' in claims and claims['preferred_username'] == 'bossadmin':
-            return True
+        Args:
+            claims (list[str]): Claims provided.
+
+        Returns:
+            (boolean)
+        """
+        scopes = self.get_settings('OIDC_RP_SCOPES', 'sub preferred_username').split()
 
         for field in scopes:
             if field not in claims:
