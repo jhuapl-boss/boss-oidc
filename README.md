@@ -10,6 +10,15 @@ Auth server, there may be some Keycloak specific implementation details that are
 captured in the code. Testing with other OIDC providers has not been tested.
 
 
+Supported Django Versions
+-------------------------
+
+This version of boss-oidc only supports Django 1.x.
+
+Support for Django 2.x exists in the `mozilla` branch.  Note that it integrates with
+`mozilla-django-oidc` instead of `django-oidc`.
+
+
 Quickstart
 ----------
 
