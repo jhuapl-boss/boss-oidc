@@ -10,3 +10,6 @@ build/
 
 # pycharm IDE artifacts
 .idea/
+
+# vim artifacts
+*.swp

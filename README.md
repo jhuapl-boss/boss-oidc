@@ -1,7 +1,7 @@
 Django Authentication OpenID Connect plugin for the Boss SSO
 ============================================================
 
-This package configured the django-oidc (jhuapl-boss fork) and drf-oidc-auth Django
+This package configures the mozilla-django-oidc and drf-oidc-auth Django
 authentication plugins for use with the Boss Keycloak authentication server providing
 single sign-on (SSO) capability for the larger Boss infrastructure.
 
@@ -16,9 +16,9 @@ Quickstart
 Install bossoidc:
 
 ```sh
-pip install git+https://github.com/jhuapl-boss/django-oidc.git
-pip install git+https://github.com/jhuapl-boss/drf-oidc-auth.git
-pip install git+https://github.com/jhuapl-boss/boss-oidc.git
+pip install mozilla-django-oidc
+pip install drf-oidc-auth
+pip install git+https://github.com/jhuapl-boss/boss-oidc.git@mozilla#egg=boss-oidc
 ```
 
 Configure authentication for Django and Django REST Framework in settings.py:
@@ -30,22 +30,14 @@ INSTALLED_APPS = [
     'djangooidc',
 ]
 
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'bossoidc.backend.OpenIdConnectBackend',
-    # ...
-]
+AUTHENTICATION_BACKENDS.insert(1, 'bossoidc.backend.OpenIdConnectBackend') 
 
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        # ...
-        'rest_framework.authentication.SessionAuthentication',
-        'oidc_auth.authentication.BearerTokenAuthentication',
-    ),
-}
+REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
+    'mozilla_django_oidc.contrib.drf.OIDCAuthentication',
+    'rest_framework.authentication.SessionAuthentication',
+    'boss.authentication.TokenAuthentication',
+    'oidc_auth.authentication.BearerTokenAuthentication',
+)
 
 # (Optional) A function used to process additional scope values in the token
 #            It also provides a helpful hook for each time a user logs in
@@ -72,7 +64,23 @@ client_id = "<auth client id>" # Client ID configured in the Auth Server
 public_uri = "http://localhost:8000" # The address that the client will be redirected back to
                                      # NOTE: the public uri needs to be configured in the Auth Server
                                      #       as a valid uri to redirect to
-scope = ['openid', 'profile', 'email'] # NOTE: This is the default scope if one is not provided
+
+OIDC_OP_AUTHORIZATION_ENDPOINT = auth_uri + '/protocol/openid-connect/auth'
+OIDC_OP_TOKEN_ENDPOINT = auth_uri + '/protocol/openid-connect/token'
+OIDC_OP_USER_ENDPOINT = auth_uri + '/protocol/openid-connect/userinfo'
+LOGIN_REDIRECT_URL = public_uri + 'v1/mgmt'
+LOGOUT_REDIRECT_URL = auth_uri + '/protocol/openid-connect/logout?redirect_uri=' + public_uri
+OIDC_RP_CLIENT_ID = client_id
+OIDC_RP_CLIENT_SECRET = ''
+OIDC_RP_SCOPES = 'email openid profile'
+OIDC_RP_SIGN_ALGO = 'RS256'
+OIDC_OP_JWKS_ENDPOINT = auth_uri + '/protocol/openid-connect/certs'
+
+# Fields to look for in the userinfo returned from Keycloak
+OIDC_CLAIMS_VERIFICATION = 'preferred_username sub'
+
+# Allow this user to not have an email address during OIDC claims verification.
+KEYCLOAK_ADMIN_USER = 'bossadmin'
 
 from bossoidc.settings import *
 configure_oidc(auth_uri, client_id, public_uri, scope) # NOTE: scope is optional and can be left out

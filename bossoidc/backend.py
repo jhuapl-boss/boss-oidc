@@ -15,6 +15,7 @@
 import datetime
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import SuspiciousOperation
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.settings import import_from_string
 from rest_framework.authentication import get_authorization_header
@@ -50,6 +51,8 @@ if LOAD_USER_ROLES is None:
     LOAD_USER_ROLES_FUNCTION = load_user_roles
 else: # pragma: no cover
     LOAD_USER_ROLES_FUNCTION = import_from_string(LOAD_USER_ROLES, 'LOAD_USER_ROLES')
+
+KEYCLOAK_ADMIN_USER = getattr(settings, 'KEYCLOAK_ADMIN_USER', 'bossadmin')
 
 
 def update_user_data(user, userinfo):
@@ -342,9 +345,14 @@ class OpenIdConnectBackend(OIDCAuthenticationBackend): # pragma: no cover
         Returns:
             (boolean)
         """
-        scopes = self.get_settings('OIDC_RP_SCOPES', 'sub preferred_username').split()
+        scopes = self.get_settings('OIDC_CLAIMS_VERIFICATION', 'preferred_username sub').split()
 
         for field in scopes:
+            if field == 'email':
+                # We don't provide an email address when we create bossadmin,
+                # so don't require email if this is the bossadmin user.
+                if 'preferred_username' in claims and claims['preferred_username'] == KEYCLOAK_ADMIN_USER:
+                    continue
             if field not in claims:
                 return False
 
