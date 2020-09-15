@@ -15,8 +15,7 @@ Supported Django Versions
 
 This version of boss-oidc only supports Django 1.x.
 
-Support for Django 2.x exists in the `mozilla` branch.  Note that it integrates with
-`mozilla-django-oidc` instead of `django-oidc`.
+Support for Django 2.x and Keycloak 11 exists in the new repo: [boss-oidc2](https://github.com/jhuapl-boss/boss-oidc2)
 
 
 Quickstart
