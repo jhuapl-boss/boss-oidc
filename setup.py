@@ -176,7 +176,7 @@ if __name__ == '__main__':
         install_requires = [
             'django<2.0',
             'djangorestframework',
-            'oic==0.13.0', # Pinned due to issues with the library
+            'oic==1.2.1', # Pinned due to issues with the library
             'pyjwkest>=1.0.0',
             #'django-oidc@http://github.com/jhuapl-boss/django-oidc/archive/master.zip',
             #'drf-oidc-auth@http://github.com/jhuapl-boss/drf-oidc-auth/archive/master.zip'
